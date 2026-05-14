@@ -48,7 +48,7 @@ async function loadAnalytics() {
 
   const exercises = ['bench', 'squat', 'deadlift', 'pullup'];
 
-  // ── Summary cards ──
+  // Summary cards
   const cards = document.getElementById('summary-cards');
   exercises.forEach(ex => {
     const history = data.analytics[ex];
@@ -61,7 +61,7 @@ async function loadAnalytics() {
       </div>`;
   });
 
-  // ── Line chart ──
+  // Line chart
   const allDates = [...new Set(
     exercises.flatMap(ex => data.analytics[ex].map(w => w.date))
   )].sort();
@@ -91,7 +91,7 @@ async function loadAnalytics() {
     }
   });
 
-  // ── Radar chart ──
+  // Radar chart
  const radarData = exercises.map(ex => {
     const history = data.analytics[ex];
     const last = history.filter(h => h.weight).slice(-1)[0];

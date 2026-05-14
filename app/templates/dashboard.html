@@ -7,7 +7,7 @@
       <h1 class="text-3xl font-bold" id="greeting">Today's Workout</h1>
       <p class="text-gray-400 mt-1">Complete all exercises and log your results.</p>
     </div>
-    <button class="btn-primary" onclick="submitWorkout()">Log Workout ✓</button>
+    <button class="btn-primary" onclick="submitWorkout()">Log Workout</button>
   </div>
 
   <div id="exercises" class="grid grid-cols-1 gap-5"></div>
@@ -75,8 +75,8 @@ async function loadWorkout() {
     `;
 
     const targetLabel = isPullup
-      ? `Target: ${ex.sets} sets × ${ex.reps} reps — Bodyweight`
-      : `Target: ${ex.sets} sets × ${ex.reps} reps @ ${ex.weight} kg`;
+      ? `Target: ${ex.sets} sets x ${ex.reps} reps - Bodyweight`
+      : `Target: ${ex.sets} sets x ${ex.reps} reps @ ${ex.weight} kg`;
 
     container.innerHTML += `
       <div class="card p-6" id="card-${ex.exercise}">
@@ -91,11 +91,11 @@ async function loadWorkout() {
           <div class="flex gap-3">
             <button onclick="markDone('${ex.exercise}', true)"
               class="px-4 py-2 rounded-lg text-sm font-semibold bg-green-800 text-green-200 hover:bg-green-700">
-              ✓ Done
+              Done
             </button>
             <button onclick="markDone('${ex.exercise}', false)"
               class="px-4 py-2 rounded-lg text-sm font-semibold bg-red-900 text-red-300 hover:bg-red-800">
-              ✗ Failed
+              Failed
             </button>
           </div>
         </div>
@@ -139,8 +139,8 @@ async function submitWorkout() {
     const fbText = document.getElementById('feedback-text');
     const allDone = Object.values(results).every(r => r.completed);
     fbText.textContent = allDone
-      ? '🔥 All exercises completed! Progression updated.'
-      : '💪 Workout logged. Keep pushing — deload applied where needed.';
+      ? 'All exercises completed. Progression updated.'
+      : 'Workout logged. Keep pushing - deload applied where needed.';
     fb.classList.remove('hidden');
     fb.style.borderColor = allDone ? '#16a34a' : '#ca8a04';
     setTimeout(() => window.location.href = '/analytics', 2000);

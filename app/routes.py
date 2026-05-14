@@ -8,7 +8,7 @@ from app.progression import ProgressionEngine
 main = Blueprint('main', __name__)
 EXERCISES = ['bench', 'squat', 'deadlift', 'pullup']
 
-# ── Page routes ────────────────────────────────────────────
+# Page routes
 @main.route('/')
 def index():
     if 'user_id' in session:
@@ -43,7 +43,7 @@ def profile():
         return redirect(url_for('main.index'))
     return render_template('profile.html')
 
-# ── Auth API ───────────────────────────────────────────────
+# Auth API
 @main.route('/api/users', methods=['POST'])
 def register_user():
     data = request.get_json()
@@ -126,7 +126,7 @@ def logout():
     return jsonify({'message': 'Logged out'})
 
 
-# ── Session API ────────────────────────────────────────────
+# Session API
 @main.route('/api/session')
 def get_session():
     if 'user_id' not in session:
@@ -141,7 +141,7 @@ def get_session():
     })
 
 
-# ── Workout API ────────────────────────────────────────────
+# Workout API
 @main.route('/api/workout/generate', methods=['GET'])
 def generate_workout():
     if 'user_id' not in session:
@@ -234,7 +234,7 @@ def get_history():
     return jsonify({'history': grouped})
 
 
-# ── Analytics API ──────────────────────────────────────────
+# Analytics API
 @main.route('/api/analytics/<int:user_id>', methods=['GET'])
 def get_analytics(user_id):
     if 'user_id' not in session:
