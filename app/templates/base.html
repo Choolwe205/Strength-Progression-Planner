@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Strength Progression Planner</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { background: #0f0f0f; color: #f1f1f1; font-family: 'Segoe UI', sans-serif; }
+    .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; }
+    .btn-primary { background: #3b82f6; color: white; padding: 10px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    .btn-primary:hover { background: #2563eb; }
+    .input-field { background: #111; border: 1px solid #333; color: #f1f1f1; border-radius: 8px; padding: 10px 14px; width: 100%; }
+    .input-field:focus { outline: none; border-color: #3b82f6; }
+    .nav { background: #111; border-bottom: 1px solid #222; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; }
+    .nav a { color: #aaa; text-decoration: none; margin-left: 24px; font-size: 14px; }
+    .nav a:hover { color: white; }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <span style="font-weight:700;font-size:18px;color:white;"> StrengthIQ</span>
+    <div>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/analytics">Analytics</a>
+      <a href="/">Profile</a>
+    </div>
+  </nav>
+  <div class="container mx-auto px-6 py-10 max-w-4xl">
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

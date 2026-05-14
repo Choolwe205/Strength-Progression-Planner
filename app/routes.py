@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, render_template
 from datetime import datetime, date
 from app import db
 from app.models import User, Workout, ProgressionLog
@@ -7,6 +7,19 @@ from app.progression import ProgressionEngine
 main = Blueprint('main', __name__)
 
 EXERCISES = ['bench', 'squat', 'deadlift', 'pullup']
+
+@main.route('/')
+def index():
+    return render_template('register.html')
+
+@main.route('/dashboard')
+def dashboard():
+    return render_template('dashboard.html')
+
+@main.route('/analytics')
+def analytics():
+    return render_template('analytics.html')
+
 
 # ── Register user ──────────────────────────────────────────
 @main.route('/api/users', methods=['POST'])
