@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, render_template, session, redirect, url_for
-from datetime import datetime, date
+from datetime import datetime, date, timedelta, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
 from app.models import User, Workout, ProgressionLog
@@ -7,6 +7,17 @@ from app.progression import ProgressionEngine
 
 main = Blueprint('main', __name__)
 EXERCISES = ['bench', 'squat', 'deadlift', 'pullup']
+KUALA_LUMPUR_TIMEZONE = timezone(timedelta(hours=8))
+
+
+def to_local_datetime(timestamp):
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
+    return timestamp.astimezone(KUALA_LUMPUR_TIMEZONE)
+
+
+def local_date_key(timestamp):
+    return to_local_datetime(timestamp).strftime('%Y-%m-%d')
 
 # Page routes
 @main.route('/')
@@ -226,7 +237,7 @@ def get_history():
 
     grouped = {}
     for workout in workouts:
-        date_key = workout.timestamp.strftime('%Y-%m-%d')
+        date_key = local_date_key(workout.timestamp)
         grouped.setdefault(date_key, []).append({
             'exercise':      workout.exercise,
             'target_sets':   workout.target_sets,
@@ -256,9 +267,9 @@ def get_analytics(user_id):
         workouts = Workout.query.filter_by(
             user_id=user_id, exercise=exercise
         ).order_by(Workout.timestamp).all()
-        workout_dates.update(w.timestamp.strftime('%Y-%m-%d') for w in workouts)
+        workout_dates.update(local_date_key(w.timestamp) for w in workouts)
         analytics[exercise] = [{
-            'date':           w.timestamp.strftime('%Y-%m-%d'),
+            'date':           local_date_key(w.timestamp),
             'weight':         w.actual_weight,
             'reps':           w.actual_reps,
             'completed':      w.completed,
