@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="text-3xl font-bold mb-2">Workout History</h1>
+<p class="text-gray-400 mb-8">All logged sessions, most recent first.</p>
+
+<div id="history-container" class="space-y-6">
+  <div class="text-gray-400 text-center py-10">Loading...</div>
+</div>
+
+<script>
+const COLORS = {
+  bench: '#3b82f6',
+  squat: '#10b981',
+  deadlift: '#f59e0b',
+  pullup: '#8b5cf6'
+};
+
+function exerciseName(exercise) {
+  return exercise === 'pullup'
+    ? 'Pull-ups'
+    : exercise.charAt(0).toUpperCase() + exercise.slice(1);
+}
+
+function formatLoad(value, fallback = 'BW') {
+  return value === null || value === undefined ? fallback : `${value}kg`;
+}
+
+function formatSessionDate(date) {
+  return new Date(`${date}T00:00:00`).toLocaleDateString('en-GB', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+}
+
+async function loadHistory() {
+  const res = await fetch('/api/history');
+  const container = document.getElementById('history-container');
+
+  if (res.status === 401) {
+    window.location.href = '/';
+    return;
+  }
+
+  const data = await res.json();
+  const history = data.history || {};
+
+  if (Object.keys(history).length === 0) {
+    container.innerHTML = '<div class="text-gray-400 text-center py-10">No workouts logged yet.</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+
+  Object.entries(history).forEach(([date, exercises]) => {
+    const allDone = exercises.every(ex => ex.completed);
+    const rows = exercises.map(ex => {
+      const target = ex.exercise === 'pullup'
+        ? `${ex.target_sets}x${ex.target_reps} BW`
+        : `${ex.target_sets}x${ex.target_reps} @ ${formatLoad(ex.target_weight)}`;
+      const actual = ex.exercise === 'pullup'
+        ? `${ex.actual_sets}x${ex.actual_reps} @ ${formatLoad(ex.actual_weight)} total`
+        : `${ex.actual_sets}x${ex.actual_reps} @ ${formatLoad(ex.actual_weight)}`;
+      const status = ex.completed
+        ? '<span class="text-green-400 font-semibold">Done</span>'
+        : '<span class="text-red-400 font-semibold">Failed</span>';
+
+      return `
+        <tr class="border-t border-gray-800">
+          <td class="py-3 pr-4 font-medium" style="color:${COLORS[ex.exercise]}">${exerciseName(ex.exercise)}</td>
+          <td class="py-3 pr-4 text-gray-400 text-sm whitespace-nowrap">${target}</td>
+          <td class="py-3 pr-4 text-gray-300 text-sm whitespace-nowrap">${actual}</td>
+          <td class="py-3 whitespace-nowrap">${status}</td>
+        </tr>`;
+    }).join('');
+
+    container.innerHTML += `
+      <div class="card p-6">
+        <div class="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center mb-4">
+          <h2 class="text-lg font-semibold">${formatSessionDate(date)}</h2>
+          <span class="text-xs px-3 py-1 rounded-full w-fit ${allDone ? 'bg-green-900 text-green-300' : 'bg-yellow-900 text-yellow-300'}">
+            ${allDone ? 'Full session' : 'Partial session'}
+          </span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-gray-500 text-xs uppercase">
+                <th class="text-left pb-2 pr-4">Exercise</th>
+                <th class="text-left pb-2 pr-4">Target</th>
+                <th class="text-left pb-2 pr-4">Actual</th>
+                <th class="text-left pb-2">Status</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>`;
+  });
+}
+
+loadHistory();
+</script>
+{% endblock %}

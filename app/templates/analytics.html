@@ -19,15 +19,16 @@
   </div>
 
   <div class="card p-6">
-  <h2 class="text-lg font-semibold mb-4">Training Consistency</h2>
-  <div class="flex gap-1 flex-wrap" id="heatmap"></div>
-  <div class="flex gap-6 mt-4 text-xs text-gray-500">
-    <span class="flex items-center gap-1">
-      <span style="width:14px;height:14px;background:#222;border-radius:3px;display:inline-block;"></span> No workout
-    </span>
-    <span class="flex items-center gap-1">
-      <span style="width:14px;height:14px;background:#1d4ed8;border-radius:3px;display:inline-block;"></span> Trained
-    </span>
+    <h2 class="text-lg font-semibold mb-4">Training Consistency - Last 12 Weeks</h2>
+    <div class="flex gap-1 flex-wrap" id="heatmap"></div>
+    <div class="flex gap-6 mt-4 text-xs text-gray-500">
+      <span class="flex items-center gap-1">
+        <span style="width:14px;height:14px;background:#222;border-radius:3px;display:inline-block;"></span> No workout
+      </span>
+      <span class="flex items-center gap-1">
+        <span style="width:14px;height:14px;background:#1d4ed8;border-radius:3px;display:inline-block;"></span> Trained
+      </span>
+    </div>
   </div>
 </div>
 
@@ -124,30 +125,39 @@ async function loadAnalytics() {
     }
   });
 
-  // ── Consistency heatmap ──
-const allWorkoutDates = new Set(
-  exercises.flatMap(ex => data.analytics[ex].map(w => w.date))
-);
+  // Consistency heatmap
+  const allWorkoutDates = new Set(data.workout_dates || []);
+  const heatmap = document.getElementById('heatmap');
+  heatmap.innerHTML = '';
 
-const heatmap   = document.getElementById('heatmap');
-const today     = new Date();
-const startDate = new Date(today);
-startDate.setDate(today.getDate() - 83);
+  const formatDateKey = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
-for (let i = 0; i < 84; i++) {
-  const d       = new Date(startDate);
-  d.setDate(startDate.getDate() + i);
-  const key     = d.toISOString().split('T')[0];
-  const trained = allWorkoutDates.has(key);
-  const box     = document.createElement('div');
-  box.title     = `${key}${trained ? ' — trained' : ''}`;
-  box.style.cssText = `
-    width:14px;height:14px;border-radius:3px;
-    background:${trained ? '#1d4ed8' : '#222'};
-    cursor:default;
-  `;
-  heatmap.appendChild(box);
-}
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const startDate = new Date(today);
+  startDate.setDate(today.getDate() - 83);
+
+  for (let i = 0; i < 84; i++) {
+    const d = new Date(startDate);
+    d.setDate(startDate.getDate() + i);
+
+    const key = formatDateKey(d);
+    const trained = allWorkoutDates.has(key);
+    const box = document.createElement('div');
+    box.title = `${key}${trained ? ' - trained' : ''}`;
+    box.style.cssText = `
+      width:14px;height:14px;border-radius:3px;
+      background:${trained ? '#1d4ed8' : '#222'};
+      cursor:default;
+    `;
+    heatmap.appendChild(box);
+  }
 }
 
 loadAnalytics();

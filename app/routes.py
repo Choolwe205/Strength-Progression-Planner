@@ -31,6 +31,12 @@ def analytics():
         return redirect(url_for('main.index'))
     return render_template('analytics.html')
 
+@main.route('/history')
+def history():
+    if 'user_id' not in session:
+        return redirect(url_for('main.index'))
+    return render_template('history.html')
+
 @main.route('/profile')
 def profile():
     if 'user_id' not in session:
@@ -200,17 +206,50 @@ def log_workout():
     return jsonify({'message': 'Workout logged successfully'})
 
 
+@main.route('/api/history')
+def get_history():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+
+    user_id = session['user_id']
+    workouts = Workout.query.filter_by(user_id=user_id).order_by(
+        Workout.timestamp.desc(),
+        Workout.id.desc()
+    ).all()
+
+    grouped = {}
+    for workout in workouts:
+        date_key = workout.timestamp.strftime('%Y-%m-%d')
+        grouped.setdefault(date_key, []).append({
+            'exercise':      workout.exercise,
+            'target_sets':   workout.target_sets,
+            'target_reps':   workout.target_reps,
+            'target_weight': workout.target_weight,
+            'actual_sets':   workout.actual_sets,
+            'actual_reps':   workout.actual_reps,
+            'actual_weight': workout.actual_weight,
+            'completed':     workout.completed
+        })
+
+    return jsonify({'history': grouped})
+
+
 # ── Analytics API ──────────────────────────────────────────
 @main.route('/api/analytics/<int:user_id>', methods=['GET'])
 def get_analytics(user_id):
     if 'user_id' not in session:
         return jsonify({'error': 'Not logged in'}), 401
+    if user_id != session['user_id']:
+        return jsonify({'error': 'Forbidden'}), 403
+
     user = User.query.get_or_404(user_id)
     analytics = {}
+    workout_dates = set()
     for exercise in EXERCISES:
         workouts = Workout.query.filter_by(
             user_id=user_id, exercise=exercise
         ).order_by(Workout.timestamp).all()
+        workout_dates.update(w.timestamp.strftime('%Y-%m-%d') for w in workouts)
         analytics[exercise] = [{
             'date':           w.timestamp.strftime('%Y-%m-%d'),
             'weight':         w.actual_weight,
@@ -221,7 +260,8 @@ def get_analytics(user_id):
     return jsonify({
         'user':        user.name,
         'body_weight': user.weight_kg,
-        'analytics':   analytics
+        'analytics':   analytics,
+        'workout_dates': sorted(workout_dates)
     })
     
     
