@@ -25,6 +25,10 @@ function formatLoad(value, fallback = 'BW') {
   return value === null || value === undefined ? fallback : `${value}kg`;
 }
 
+function formatPullupTarget(weight) {
+  return weight && weight > 0 ? `BW + ${weight}kg` : 'BW';
+}
+
 function formatSessionDate(date) {
   return new Date(`${date}T00:00:00`).toLocaleDateString('en-GB', {
     weekday: 'long',
@@ -57,7 +61,7 @@ async function loadHistory() {
     const allDone = exercises.every(ex => ex.completed);
     const rows = exercises.map(ex => {
       const target = ex.exercise === 'pullup'
-        ? `${ex.target_sets}x${ex.target_reps} BW`
+        ? `${ex.target_sets}x${ex.target_reps} ${formatPullupTarget(ex.target_weight)}`
         : `${ex.target_sets}x${ex.target_reps} @ ${formatLoad(ex.target_weight)}`;
       const actual = ex.exercise === 'pullup'
         ? `${ex.actual_sets}x${ex.actual_reps} @ ${formatLoad(ex.actual_weight)} total`

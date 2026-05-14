@@ -69,8 +69,15 @@ def register_user():
     db.session.flush()
 
     for exercise in EXERCISES:
-        starting_weight = ProgressionEngine.get_starting_weight(exercise, data['weight_kg'])
-        starting_reps   = ProgressionEngine.get_starting_reps(exercise)
+        starting_weight = ProgressionEngine.get_starting_weight(
+            exercise,
+            data['weight_kg'],
+            data['experience']
+        )
+        starting_reps = ProgressionEngine.get_starting_reps(
+            exercise,
+            data['experience']
+        )
         log = ProgressionLog(
             user_id=user.id, exercise=exercise,
             current_weight=starting_weight,

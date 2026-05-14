@@ -43,12 +43,13 @@ async function loadWorkout() {
 
   data.workout.forEach(ex => {
     const isPullup = ex.exercise === 'pullup';
+    const pullupAddedWeight = isPullup ? (ex.weight || 0) : 0;
 
     results[ex.exercise] = {
       completed:     false,
       actual_reps:   ex.reps,
       actual_sets:   ex.sets,
-      actual_weight: isPullup ? userWeight : ex.weight
+      actual_weight: isPullup ? userWeight + pullupAddedWeight : ex.weight
     };
 
     const deloadBadge = ex.deload_active
@@ -63,7 +64,7 @@ async function loadWorkout() {
       </div>
       <div>
         <label class="text-xs text-gray-500">Added Weight (kg)</label>
-        <input type="number" value="0" class="input-field mt-1 text-sm"
+        <input type="number" value="${pullupAddedWeight}" class="input-field mt-1 text-sm"
           onchange="results['${ex.exercise}'].actual_weight = ${userWeight} + parseFloat(this.value || 0)" />
       </div>
     ` : `
@@ -75,7 +76,7 @@ async function loadWorkout() {
     `;
 
     const targetLabel = isPullup
-      ? `Target: ${ex.sets} sets x ${ex.reps} reps - Bodyweight`
+      ? `Target: ${ex.sets} sets x ${ex.reps} reps - Bodyweight${pullupAddedWeight > 0 ? ` + ${pullupAddedWeight} kg` : ''}`
       : `Target: ${ex.sets} sets x ${ex.reps} reps @ ${ex.weight} kg`;
 
     container.innerHTML += `
