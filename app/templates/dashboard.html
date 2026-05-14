@@ -5,7 +5,7 @@
   <div class="flex justify-between items-center mb-8">
     <div>
       <h1 class="text-3xl font-bold" id="greeting">Today's Workout</h1>
-      <p class="text-gray-400 mt-1" id="subtitle">Complete all exercises and log your results.</p>
+      <p class="text-gray-400 mt-1">Complete all exercises and log your results.</p>
     </div>
     <button class="btn-primary" onclick="submitWorkout()">Log Workout ✓</button>
   </div>
@@ -18,14 +18,21 @@
 </div>
 
 <script>
-const userId = localStorage.getItem('user_id');
-const userName = localStorage.getItem('user_name');
-if (!userId) window.location.href = '/';
-
+let userId, userName, userWeight;
 const results = {};
 
+async function init() {
+  const res  = await fetch('/api/session');
+  const data = await res.json();
+  if (!data.logged_in) { window.location.href = '/'; return; }
+  userId     = data.user_id;
+  userName   = data.user_name;
+  userWeight = data.user_weight;
+  loadWorkout();
+}
+
 async function loadWorkout() {
-  const res = await fetch(`/api/workout/generate?user_id=${userId}`);
+  const res  = await fetch(`/api/workout/generate`);
   const data = await res.json();
 
   document.getElementById('greeting').textContent = `Hey ${userName}, here's today's workout`;
@@ -33,17 +40,53 @@ async function loadWorkout() {
   document.getElementById('content').classList.remove('hidden');
 
   const container = document.getElementById('exercises');
+
   data.workout.forEach(ex => {
-    results[ex.exercise] = { completed: false, actual_reps: ex.reps, actual_weight: ex.weight, actual_sets: ex.sets };
-    const weightLabel = ex.weight ? `${ex.weight} kg` : 'Bodyweight';
-    const deloadBadge = ex.deload_active ? '<span class="text-xs bg-yellow-800 text-yellow-200 px-2 py-1 rounded ml-2">DELOAD</span>' : '';
+    const isPullup = ex.exercise === 'pullup';
+
+    results[ex.exercise] = {
+      completed:     false,
+      actual_reps:   ex.reps,
+      actual_sets:   ex.sets,
+      actual_weight: isPullup ? userWeight : ex.weight
+    };
+
+    const deloadBadge = ex.deload_active
+      ? '<span class="text-xs bg-yellow-800 text-yellow-200 px-2 py-1 rounded ml-2">DELOAD</span>'
+      : '';
+
+    const weightSection = isPullup ? `
+      <div>
+        <label class="text-xs text-gray-500">Bodyweight (kg)</label>
+        <input type="number" value="${userWeight}" disabled
+          class="input-field mt-1 text-sm opacity-50 cursor-not-allowed" />
+      </div>
+      <div>
+        <label class="text-xs text-gray-500">Added Weight (kg)</label>
+        <input type="number" value="0" class="input-field mt-1 text-sm"
+          onchange="results['${ex.exercise}'].actual_weight = ${userWeight} + parseFloat(this.value || 0)" />
+      </div>
+    ` : `
+      <div>
+        <label class="text-xs text-gray-500">Actual Weight (kg)</label>
+        <input type="number" value="${ex.weight}" class="input-field mt-1 text-sm"
+          onchange="results['${ex.exercise}'].actual_weight = parseFloat(this.value)" />
+      </div>
+    `;
+
+    const targetLabel = isPullup
+      ? `Target: ${ex.sets} sets × ${ex.reps} reps — Bodyweight`
+      : `Target: ${ex.sets} sets × ${ex.reps} reps @ ${ex.weight} kg`;
 
     container.innerHTML += `
       <div class="card p-6" id="card-${ex.exercise}">
         <div class="flex justify-between items-start mb-4">
           <div>
-            <h2 class="text-xl font-bold capitalize">${ex.exercise} ${deloadBadge}</h2>
-            <p class="text-gray-400 text-sm mt-1">Target: ${ex.sets} sets × ${ex.reps} reps @ ${weightLabel}</p>
+            <h2 class="text-xl font-bold">
+              ${ex.exercise === 'pullup' ? 'Pull-ups' : ex.exercise.charAt(0).toUpperCase() + ex.exercise.slice(1)}
+              ${deloadBadge}
+            </h2>
+            <p class="text-gray-400 text-sm mt-1">${targetLabel}</p>
           </div>
           <div class="flex gap-3">
             <button onclick="markDone('${ex.exercise}', true)"
@@ -67,11 +110,7 @@ async function loadWorkout() {
             <input type="number" value="${ex.reps}" class="input-field mt-1 text-sm"
               onchange="results['${ex.exercise}'].actual_reps = parseInt(this.value)" />
           </div>
-          <div>
-            <label class="text-xs text-gray-500">Actual Weight (kg)</label>
-            <input type="number" value="${ex.weight || 0}" class="input-field mt-1 text-sm"
-              onchange="results['${ex.exercise}'].actual_weight = parseFloat(this.value)" />
-          </div>
+          ${weightSection}
         </div>
       </div>`;
   });
@@ -96,7 +135,7 @@ async function submitWorkout() {
   });
 
   if (res.ok) {
-    const fb = document.getElementById('feedback');
+    const fb     = document.getElementById('feedback');
     const fbText = document.getElementById('feedback-text');
     const allDone = Object.values(results).every(r => r.completed);
     fbText.textContent = allDone
@@ -108,6 +147,6 @@ async function submitWorkout() {
   }
 }
 
-loadWorkout();
+init();
 </script>
 {% endblock %}

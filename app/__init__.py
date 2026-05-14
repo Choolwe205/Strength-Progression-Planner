@@ -8,6 +8,7 @@ def create_app():
     app = Flask(__name__)
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///strength.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SECRET_KEY'] = 'strengthiq-secret-2026'
     CORS(app)
     db.init_app(app)
 
@@ -15,7 +16,7 @@ def create_app():
     app.register_blueprint(main)
 
     with app.app_context():
-        from . import models        # ← ADD THIS LINE
+        from . import models
         db.create_all()
 
     return app

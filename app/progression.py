@@ -1,9 +1,9 @@
 from datetime import date
 
 FORMULAS = {
-    'bench':    {'multiplier': 0.40, 'increment': 2.5},
-    'squat':    {'multiplier': 0.75, 'increment': 5.0},
-    'deadlift': {'multiplier': 0.50, 'increment': 5.0},
+    'bench':    {'multiplier': 0.5, 'increment': 2.5},
+    'squat':    {'multiplier': 0.75, 'increment': 10.0},
+    'deadlift': {'multiplier': 0.65, 'increment': 5.0},
     'pullup':   {'multiplier': None, 'increment': None},
 }
 

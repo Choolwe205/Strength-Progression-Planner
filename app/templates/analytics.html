@@ -10,40 +10,57 @@
     <h2 class="text-lg font-semibold mb-4">Strength Trend (kg over time)</h2>
     <canvas id="trendChart" height="100"></canvas>
   </div>
+
   <div class="card p-6">
-    <h2 class="text-lg font-semibold mb-4">Strength-to-Bodyweight Ratio</h2>
-    <canvas id="ratioChart" height="100"></canvas>
+    <h2 class="text-lg font-semibold mb-4">Strength Balance (latest session)</h2>
+    <div style="max-width:400px; margin:0 auto;">
+      <canvas id="radarChart"></canvas>
+    </div>
+  </div>
+
+  <div class="card p-6">
+  <h2 class="text-lg font-semibold mb-4">Training Consistency</h2>
+  <div class="flex gap-1 flex-wrap" id="heatmap"></div>
+  <div class="flex gap-6 mt-4 text-xs text-gray-500">
+    <span class="flex items-center gap-1">
+      <span style="width:14px;height:14px;background:#222;border-radius:3px;display:inline-block;"></span> No workout
+    </span>
+    <span class="flex items-center gap-1">
+      <span style="width:14px;height:14px;background:#1d4ed8;border-radius:3px;display:inline-block;"></span> Trained
+    </span>
   </div>
 </div>
 
 <script>
-const userId = localStorage.getItem('user_id');
-if (!userId) window.location.href = '/';
-
 const COLORS = {
   bench: '#3b82f6', squat: '#10b981', deadlift: '#f59e0b', pullup: '#8b5cf6'
 };
 
 async function loadAnalytics() {
-  const res = await fetch(`/api/analytics/${userId}`);
-  const data = await res.json();
+  const sessionRes  = await fetch('/api/session');
+  const sessionData = await sessionRes.json();
+  if (!sessionData.logged_in) { window.location.href = '/'; return; }
 
-  const cards = document.getElementById('summary-cards');
+  const userId = sessionData.user_id;
+  const res    = await fetch(`/api/analytics/${userId}`);
+  const data   = await res.json();
+
   const exercises = ['bench', 'squat', 'deadlift', 'pullup'];
 
+  // ── Summary cards ──
+  const cards = document.getElementById('summary-cards');
   exercises.forEach(ex => {
     const history = data.analytics[ex];
-    const last = history.filter(h => h.weight).slice(-1)[0];
-    const weight = last ? `${last.weight} kg` : 'Bodyweight';
-    const ratio = last && last.strength_ratio ? `${last.strength_ratio}× BW` : '—';
+    const last    = history.filter(h => h.weight).slice(-1)[0];
+    const weight  = last ? `${last.weight} kg` : ex === 'pullup' ? 'Bodyweight' : 'No data yet';
     cards.innerHTML += `
       <div class="card p-5">
-        <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">${ex}</p>
+        <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">${ex === 'pullup' ? 'Pull-ups' : ex}</p>
         <p class="text-2xl font-bold" style="color:${COLORS[ex]}">${weight}</p>
-        <p class="text-sm text-gray-400 mt-1">${ratio}</p>
       </div>`;
   });
 
+  // ── Line chart ──
   const allDates = [...new Set(
     exercises.flatMap(ex => data.analytics[ex].map(w => w.date))
   )].sort();
@@ -52,7 +69,7 @@ async function loadAnalytics() {
     type: 'line',
     data: {
       labels: allDates,
-      datasets: exercises.filter(ex => ex !== 'pullup').map(ex => ({
+      datasets: exercises.map(ex => ({
         label: ex.charAt(0).toUpperCase() + ex.slice(1),
         data: allDates.map(d => {
           const match = data.analytics[ex].find(w => w.date === d);
@@ -63,28 +80,74 @@ async function loadAnalytics() {
         tension: 0.4, spanGaps: true, pointRadius: 4
       }))
     },
-    options: { responsive: true, plugins: { legend: { labels: { color: '#ccc' } } },
-      scales: { x: { ticks: { color: '#888' }, grid: { color: '#222' } },
-                y: { ticks: { color: '#888' }, grid: { color: '#222' } } } }
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: '#ccc' } } },
+      scales: {
+        x: { ticks: { color: '#888' }, grid: { color: '#222' } },
+        y: { ticks: { color: '#888' }, grid: { color: '#222' } }
+      }
+    }
   });
 
-  new Chart(document.getElementById('ratioChart'), {
-    type: 'bar',
-    data: {
-      labels: allDates,
-      datasets: exercises.filter(ex => ex !== 'pullup').map(ex => ({
-        label: ex.charAt(0).toUpperCase() + ex.slice(1),
-        data: allDates.map(d => {
-          const match = data.analytics[ex].find(w => w.date === d);
-          return match ? match.strength_ratio : null;
-        }),
-        backgroundColor: COLORS[ex] + '99',
-      }))
-    },
-    options: { responsive: true, plugins: { legend: { labels: { color: '#ccc' } } },
-      scales: { x: { ticks: { color: '#888' }, grid: { color: '#222' } },
-                y: { ticks: { color: '#888' }, grid: { color: '#222' } } } }
+  // ── Radar chart ──
+ const radarData = exercises.map(ex => {
+    const history = data.analytics[ex];
+    const last = history.filter(h => h.weight).slice(-1)[0];
+    if (!last) return ex === 'pullup' ? 1.0 : 0;
+    return parseFloat((last.weight / data.body_weight).toFixed(2));
   });
+
+  new Chart(document.getElementById('radarChart'), {
+    type: 'radar',
+    data: {
+      labels: ['Bench', 'Squat', 'Deadlift', 'Pull-ups'],
+      datasets: [{
+        label: 'Strength Profile',
+        data: radarData,
+        borderColor: '#3b82f6',
+        backgroundColor: '#3b82f622',
+        pointBackgroundColor: exercises.map(ex => COLORS[ex]),
+        pointRadius: 5
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: '#ccc' } } },
+      scales: {
+        r: {
+          ticks: { color: '#888', backdropColor: 'transparent' },
+          grid: { color: '#333' },
+          pointLabels: { color: '#ccc', font: { size: 13 } }
+        }
+      }
+    }
+  });
+
+  // ── Consistency heatmap ──
+const allWorkoutDates = new Set(
+  exercises.flatMap(ex => data.analytics[ex].map(w => w.date))
+);
+
+const heatmap   = document.getElementById('heatmap');
+const today     = new Date();
+const startDate = new Date(today);
+startDate.setDate(today.getDate() - 83);
+
+for (let i = 0; i < 84; i++) {
+  const d       = new Date(startDate);
+  d.setDate(startDate.getDate() + i);
+  const key     = d.toISOString().split('T')[0];
+  const trained = allWorkoutDates.has(key);
+  const box     = document.createElement('div');
+  box.title     = `${key}${trained ? ' — trained' : ''}`;
+  box.style.cssText = `
+    width:14px;height:14px;border-radius:3px;
+    background:${trained ? '#1d4ed8' : '#222'};
+    cursor:default;
+  `;
+  heatmap.appendChild(box);
+}
 }
 
 loadAnalytics();

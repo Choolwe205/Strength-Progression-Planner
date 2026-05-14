@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-md mx-auto">
+  <h1 class="text-3xl font-bold mb-2">Welcome back</h1>
+  <p class="text-gray-400 mb-8">Log in to continue your progression.</p>
+
+  <div class="card p-8 space-y-5">
+    <div>
+      <label class="block text-sm text-gray-400 mb-1">Username</label>
+      <input id="username" type="text" class="input-field" placeholder="yourname" />
+    </div>
+    <div>
+      <label class="block text-sm text-gray-400 mb-1">Password</label>
+      <input id="password" type="password" class="input-field" placeholder="••••••••" />
+    </div>
+
+    <div id="error" class="text-red-400 text-sm hidden"></div>
+
+    <button class="btn-primary w-full" onclick="login()">Log In →</button>
+    <p class="text-center text-sm text-gray-500 mt-2">
+      No account? <a href="/" class="text-blue-400 hover:underline">Register here</a>
+    </p>
+  </div>
+</div>
+
+<script>
+async function login() {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  const errEl    = document.getElementById('error');
+
+  if (!username || !password) {
+    errEl.textContent = 'Please fill in all fields.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  const res = await fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+
+  const data = await res.json();
+  if (res.ok) {
+    window.location.href = '/dashboard';
+  } else {
+    errEl.textContent = data.error || 'Login failed.';
+    errEl.classList.remove('hidden');
+  }
+}
+</script>
+{% endblock %}

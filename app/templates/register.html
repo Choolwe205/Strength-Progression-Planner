@@ -5,48 +5,63 @@
   <p class="text-gray-400 mb-8">We'll calculate your starting weights automatically.</p>
 
   <div class="card p-8 space-y-5">
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm text-gray-400 mb-1">Full Name</label>
+        <input id="name" type="text" class="input-field" placeholder="John Smith" />
+      </div>
+      <div>
+        <label class="block text-sm text-gray-400 mb-1">Username</label>
+        <input id="username" type="text" class="input-field" placeholder="johnsmith" />
+      </div>
+    </div>
     <div>
-      <label class="block text-sm text-gray-400 mb-1">Full Name</label>
-      <input id="name" type="text" class="input-field" placeholder="Janet Harper" />
+      <label class="block text-sm text-gray-400 mb-1">Password</label>
+      <input id="password" type="password" class="input-field" placeholder="••••••••" />
     </div>
     <div>
       <label class="block text-sm text-gray-400 mb-1">Date of Birth</label>
-     <input id="dob" type="date" class="input-field" title="Date of Birth" />
+      <input id="dob" type="date" class="input-field" title="Date of Birth" />
     </div>
     <div class="grid grid-cols-2 gap-4">
       <div>
         <label class="block text-sm text-gray-400 mb-1">Weight (kg)</label>
-        <input id="weight" type="number" class="input-field" placeholder="60" />
+        <input id="weight" type="number" class="input-field" placeholder="75" />
       </div>
       <div>
         <label class="block text-sm text-gray-400 mb-1">Height (cm)</label>
-        <input id="height" type="number" class="input-field" placeholder="170" />
+        <input id="height" type="number" class="input-field" placeholder="175" />
       </div>
     </div>
     <div>
       <label class="block text-sm text-gray-400 mb-1">Experience Level</label>
-      <select id="experience" class="input-field" title="Experience Level"></select>
-        <option value="beginner">Beginner (0-1 year)</option>
-        <option value="intermediate">Intermediate (1-3 years)</option>
+      <select id="experience" class="input-field" title="Experience Level"
+        style="appearance:auto; background:#111; color:#f1f1f1;">
+        <option value="beginner">Beginner (0–1 year)</option>
+        <option value="intermediate">Intermediate (1–3 years)</option>
       </select>
     </div>
 
     <div id="error" class="text-red-400 text-sm hidden"></div>
-
     <button class="btn-primary w-full mt-2" onclick="register()">Generate My Program →</button>
+    <p class="text-center text-sm text-gray-500 mt-2">
+      Already have an account? <a href="/login" class="text-blue-400 hover:underline">Log in here</a>
+    </p>
   </div>
 </div>
 
 <script>
 async function register() {
   const name       = document.getElementById('name').value.trim();
+  const username   = document.getElementById('username').value.trim();
+  const password   = document.getElementById('password').value;
   const dob        = document.getElementById('dob').value;
   const weight_kg  = parseFloat(document.getElementById('weight').value);
   const height_cm  = parseFloat(document.getElementById('height').value);
   const experience = document.getElementById('experience').value;
   const errEl      = document.getElementById('error');
 
-  if (!name || !dob || !weight_kg || !height_cm) {
+  if (!name || !username || !password || !dob || !weight_kg || !height_cm) {
     errEl.textContent = 'Please fill in all fields.';
     errEl.classList.remove('hidden');
     return;
@@ -55,13 +70,11 @@ async function register() {
   const res = await fetch('/api/users', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, dob, weight_kg, height_cm, experience })
+    body: JSON.stringify({ name, username, password, dob, weight_kg, height_cm, experience })
   });
 
   const data = await res.json();
   if (res.ok) {
-    localStorage.setItem('user_id', data.user_id);
-    localStorage.setItem('user_name', name);
     window.location.href = '/dashboard';
   } else {
     errEl.textContent = data.error || 'Something went wrong.';

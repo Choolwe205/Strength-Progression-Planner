@@ -1,38 +1,63 @@
-from flask import Blueprint, request, jsonify, render_template
+from flask import Blueprint, request, jsonify, render_template, session, redirect, url_for
 from datetime import datetime, date
+from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
 from app.models import User, Workout, ProgressionLog
 from app.progression import ProgressionEngine
 
 main = Blueprint('main', __name__)
-
 EXERCISES = ['bench', 'squat', 'deadlift', 'pullup']
 
+# ── Page routes ────────────────────────────────────────────
 @main.route('/')
 def index():
+    if 'user_id' in session:
+        return redirect(url_for('main.dashboard'))
     return render_template('register.html')
+
+@main.route('/login')
+def login_page():
+    return render_template('login.html')
 
 @main.route('/dashboard')
 def dashboard():
+    if 'user_id' not in session:
+        return redirect(url_for('main.index'))
     return render_template('dashboard.html')
 
 @main.route('/analytics')
 def analytics():
+    if 'user_id' not in session:
+        return redirect(url_for('main.index'))
     return render_template('analytics.html')
 
+@main.route('/profile')
+def profile():
+    if 'user_id' not in session:
+        return redirect(url_for('main.index'))
+    return render_template('profile.html')
 
-# ── Register user ──────────────────────────────────────────
+# ── Auth API ───────────────────────────────────────────────
 @main.route('/api/users', methods=['POST'])
 def register_user():
     data = request.get_json()
+
+    if User.query.filter_by(username=data['username']).first():
+        return jsonify({'error': 'Username already taken'}), 400
+
     dob = datetime.strptime(data['dob'], '%Y-%m-%d').date()
     bmi = ProgressionEngine.calculate_bmi(data['weight_kg'], data['height_cm'])
     age = ProgressionEngine.calculate_age(dob)
 
     user = User(
-        name=data['name'], dob=dob,
-        weight_kg=data['weight_kg'], height_cm=data['height_cm'],
-        experience=data['experience'], bmi=bmi
+        name=data['name'],
+        username=data['username'],
+        password=generate_password_hash(data['password']),
+        dob=dob,
+        weight_kg=data['weight_kg'],
+        height_cm=data['height_cm'],
+        experience=data['experience'],
+        bmi=bmi
     )
     db.session.add(user)
     db.session.flush()
@@ -49,36 +74,97 @@ def register_user():
         db.session.add(log)
 
     db.session.commit()
-    return jsonify({'message': 'User created', 'user_id': user.id, 'bmi': bmi, 'age': age}), 201
+
+    session['user_id']     = user.id
+    session['user_name']   = user.name
+    session['user_weight'] = user.weight_kg
+    session['user_bmi']    = bmi
+    session['user_age']    = age
+
+    return jsonify({
+        'message': 'User created',
+        'user_id': user.id,
+        'bmi': bmi,
+        'age': age
+    }), 201
 
 
-# ── Generate workout ───────────────────────────────────────
+@main.route('/api/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    user = User.query.filter_by(username=data['username']).first()
+
+    if not user or not check_password_hash(user.password, data['password']):
+        return jsonify({'error': 'Invalid username or password'}), 401
+
+    age = ProgressionEngine.calculate_age(user.dob)
+    session['user_id']     = user.id
+    session['user_name']   = user.name
+    session['user_weight'] = user.weight_kg
+    session['user_bmi']    = user.bmi
+    session['user_age']    = age
+
+    return jsonify({
+        'message': 'Login successful',
+        'user_id': user.id,
+        'name': user.name,
+        'weight_kg': user.weight_kg,
+        'bmi': user.bmi,
+        'age': age
+    })
+
+
+@main.route('/api/logout', methods=['POST'])
+def logout():
+    session.clear()
+    return jsonify({'message': 'Logged out'})
+
+
+# ── Session API ────────────────────────────────────────────
+@main.route('/api/session')
+def get_session():
+    if 'user_id' not in session:
+        return jsonify({'logged_in': False}), 401
+    return jsonify({
+        'logged_in': True,
+        'user_id':     session['user_id'],
+        'user_name':   session['user_name'],
+        'user_weight': session['user_weight'],
+        'user_bmi':    session['user_bmi'],
+        'user_age':    session['user_age']
+    })
+
+
+# ── Workout API ────────────────────────────────────────────
 @main.route('/api/workout/generate', methods=['GET'])
 def generate_workout():
-    user_id = request.args.get('user_id', type=int)
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+    user_id = session['user_id']
     user = User.query.get_or_404(user_id)
     workout = []
     for exercise in EXERCISES:
         log = ProgressionLog.query.filter_by(user_id=user_id, exercise=exercise).first()
         workout.append({
-            'exercise': exercise,
-            'sets': 3,
-            'reps': log.current_reps,
-            'weight': log.current_weight,
+            'exercise':      exercise,
+            'sets':          3,
+            'reps':          log.current_reps,
+            'weight':        log.current_weight,
             'deload_active': log.deload_active
         })
     return jsonify({'user': user.name, 'workout': workout})
 
 
-# ── Log workout ────────────────────────────────────────────
 @main.route('/api/workout/log', methods=['POST'])
 def log_workout():
-    data = request.get_json()
-    user_id = data['user_id']
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+    data    = request.get_json()
+    user_id = session['user_id']
     results = data['results']
 
     for result in results:
-        exercise = result['exercise']
+        exercise  = result['exercise']
         completed = result['completed']
         log = ProgressionLog.query.filter_by(user_id=user_id, exercise=exercise).first()
 
@@ -96,26 +182,29 @@ def log_workout():
         if not completed:
             log.failures += 1
             if log.failures >= 2:
-                new_weight, new_reps = ProgressionEngine.apply_deload(exercise, log.current_weight, log.current_reps)
+                new_weight, new_reps = ProgressionEngine.apply_deload(
+                    exercise, log.current_weight, log.current_reps)
                 log.current_weight = new_weight
-                log.current_reps = new_reps
-                log.failures = 0
-                log.deload_active = True
+                log.current_reps   = new_reps
+                log.failures       = 0
+                log.deload_active  = True
         else:
             log.deload_active = False
             new_weight, new_reps, _ = ProgressionEngine.next_progression(
                 exercise, log.current_weight, log.current_reps, False)
             log.current_weight = new_weight
-            log.current_reps = new_reps
-            log.failures = 0
+            log.current_reps   = new_reps
+            log.failures       = 0
 
     db.session.commit()
     return jsonify({'message': 'Workout logged successfully'})
 
 
-# ── Analytics ──────────────────────────────────────────────
+# ── Analytics API ──────────────────────────────────────────
 @main.route('/api/analytics/<int:user_id>', methods=['GET'])
 def get_analytics(user_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
     user = User.query.get_or_404(user_id)
     analytics = {}
     for exercise in EXERCISES:
@@ -123,10 +212,16 @@ def get_analytics(user_id):
             user_id=user_id, exercise=exercise
         ).order_by(Workout.timestamp).all()
         analytics[exercise] = [{
-            'date': w.timestamp.strftime('%Y-%m-%d'),
-            'weight': w.actual_weight,
-            'reps': w.actual_reps,
-            'completed': w.completed,
+            'date':           w.timestamp.strftime('%Y-%m-%d'),
+            'weight':         w.actual_weight,
+            'reps':           w.actual_reps,
+            'completed':      w.completed,
             'strength_ratio': round(w.actual_weight / user.weight_kg, 2) if w.actual_weight else None
         } for w in workouts]
-    return jsonify({'user': user.name, 'body_weight': user.weight_kg, 'analytics': analytics})
+    return jsonify({
+        'user':        user.name,
+        'body_weight': user.weight_kg,
+        'analytics':   analytics
+    })
+    
+    
