@@ -153,7 +153,7 @@ from run import app as application
 10. Visit:
 
 ```text
-https://YOUR_USERNAME.pythonanywhere.com
+https://choolwebright.pythonanywhere.com/
 ```
 
 ## Deployment Notes
